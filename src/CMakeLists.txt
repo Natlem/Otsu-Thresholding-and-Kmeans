@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (Otsu)
+project (ImgSeg)
 
 ADD_SUBDIRECTORY(kmeans)
 ADD_SUBDIRECTORY(otsu)
