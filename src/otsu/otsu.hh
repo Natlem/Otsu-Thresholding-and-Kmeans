@@ -30,21 +30,27 @@ class Otsu
         Otsu(const cv::Mat& img, int nClass);
         template<typename T>
         Otsu(const std::vector<std::vector<T>>& img, int nClass);
-        void operator()(cv::Mat& img, int nClass);
+        void operator()(const cv::Mat& img, int nClass);
         template<typename T>
         void operator()(const std::vector<std::vector<T>>& img, int nClass);
-    private:
-        void otsuProcess(cv::Mat& img);
+        cv::Mat getResult();
+        std::vector<std::vector<int>> getMap();
+private:
+        void otsuProcess(const cv::Mat& img);
 
         float sigmaComputation(std::vector<int>& thresholds);
         void sigmaCodeGeneration();
         void libGeneration();
         t_sigmaComp libLoad();
+        void segmentImg(const std::vector<int>& thresholds);
 
         void buildLookUpTables(std::vector<std::vector<float>>& P, std::vector<std::vector<float>>& S, std::vector<std::vector<float>>& H, std::vector<float>& h);
         void buildHistogram(std::vector<float>& h, const std::vector<std::vector<float>>& Vmap);
 
+        cv::Mat output;
         int nClass;
+        std::vector<std::vector<int>> segMap;
+
 };
 
 #endif

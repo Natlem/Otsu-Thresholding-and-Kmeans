@@ -1,5 +1,23 @@
 #include "otsu.hh"
 
+
+Otsu::Otsu()
+{
+
+}
+
+Otsu::Otsu(const cv::Mat& img, int nClass)
+    :output(img),nClass(nClass)
+{
+    this->otsuProcess(img);
+}
+
+void Otsu::operator()(const cv::Mat& img, int nClass)
+{
+    this->nClass = nClass;
+    this->otsuProcess(img);
+}
+
 float Otsu::sigmaComputation(std::vector<int>& thresholds)
 {
     std::vector<std::vector<float>> H;
@@ -213,20 +231,20 @@ void Otsu::buildHistogram(std::vector<float>& h, const std::vector<std::vector<f
     {
         for (auto col = 0; col < Vmap[0].size(); ++col)
         {
-            h[Vmap[row][col]]++;
+            h[static_cast<int>(Vmap[row][col])] += 1.0;
         }
     }
 }
 
-void Otsu::otsuProcess(cv::Mat& img)
+void Otsu::otsuProcess(const cv::Mat& img)
 {
     //We assume that img is in HSV colorspace
     
-    std::vector<std::vector<float>> Vmap(img.row, std::vector<float>(img.col));
+    std::vector<std::vector<float>> Vmap(img.rows, std::vector<float>(img.cols));
 
-    for (auto i = 0; i < img.row; ++i)
-        for (auto j = 0; j < img.col; ++j)
-            Vmap[i][j] = img.at<cv::Vec3b>()[2];
+    for (auto i = 0; i < img.rows; ++i)
+        for (auto j = 0; j < img.cols; ++j)
+            Vmap[i][j] = img.at<cv::Vec3b>(i,j)[2];
 
     std::vector<float> histo(256,0);
     this->buildHistogram(histo, Vmap);
@@ -238,6 +256,48 @@ void Otsu::otsuProcess(cv::Mat& img)
 
     
     std::vector<int> thresholds(this->nClass);
-    float maxSig = sigmaComputation(thresholds);
+    sigmaComputation(thresholds);
+    segmentImg(thresholds);
 
+}
+
+void Otsu::segmentImg(const std::vector<int>& thresholds)
+{
+    segMap = std::vector<std::vector<int>>(output.rows, std::vector<int>(output.cols));
+    for (auto i = 0; i < output.rows; ++i)
+    {
+        for (auto j = 0; j < output.cols; ++j)
+        {
+            int vValue = static_cast<int>(output.at<cv::Vec3b>(i,j)[2]);
+            for (auto k = 0; k < this->nClass; ++ i)
+            {
+                if (k < this->nClass)
+                {
+                    if (vValue < thresholds[k + 1] && vValue > thresholds[k])
+                    {
+                        segMap[i][j] = k;
+                        output.at<cv::Vec3b>(i,j)[2] = vValue;
+                    }
+                }
+                else
+                {
+                    if (vValue > thresholds[k])
+                    {
+                        segMap[i][j] = k;
+                        output.at<cv::Vec3b>(i,j)[2] = vValue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+cv::Mat Otsu::getResult()
+{
+    return this->output;
+}
+
+std::vector<std::vector<int>> Otsu::getMap()
+{
+    return this->segMap;
 }
