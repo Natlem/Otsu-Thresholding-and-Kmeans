@@ -38,13 +38,13 @@ file(
 )
 
 
-add_executable(
+add_library(
 	Otsu
+    SHARED
 	${V_SOURCE}
 )
 
 target_link_libraries(
 	Otsu
-    SHARED
     ${OpenCV_LIBS}
 )
