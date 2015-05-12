@@ -38,7 +38,7 @@ class Otsu
 private:
         void otsuProcess(const cv::Mat& img);
 
-        float sigmaComputation(std::vector<int>& thresholds);
+        float sigmaComputation(std::vector<int>& thresholds,std::vector<std::vector<float>> H);
         void sigmaCodeGeneration();
         void libGeneration();
         t_sigmaComp libLoad();

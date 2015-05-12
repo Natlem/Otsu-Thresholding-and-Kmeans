@@ -18,9 +18,24 @@ void Otsu::operator()(const cv::Mat& img, int nClass)
     this->otsuProcess(img);
 }
 
-float Otsu::sigmaComputation(std::vector<int>& thresholds)
+float sigmaComp1(std::vector<std::vector<float>> H, std::vector<int>& threshold, int level)
 {
-    std::vector<std::vector<float>> H;
+    float maxSig = 0;
+    for (int a = 1; a < 256-2; a++)
+    {
+        float Sq = H[1][a] + H[a + 1][255];
+        if (maxSig < Sq)
+        {
+            threshold[0] = a;
+            maxSig = Sq;
+        }
+    }
+    return maxSig;
+}
+
+
+float Otsu::sigmaComputation(std::vector<int>& thresholds,std::vector<std::vector<float>> H)
+{
     float sigma = 0;
     sigmaCodeGeneration();
     this->libGeneration();
@@ -31,8 +46,8 @@ float Otsu::sigmaComputation(std::vector<int>& thresholds)
 
 void Otsu::sigmaCodeGeneration()
 {
-        std::string header("#include <vector>\n");
-        std::string prototype("float "FUNC2GEN"(std::vector<std::vector<float>> H, std::vector<int>& threshold, int level)\n");
+        std::string header("#ifdef _WIN32\n #define EXTERN_DLL_EXPORT extern \"C\" __declspec(dllexport)\n#endif\n#include <vector>\n");
+        std::string prototype("EXTERN_DLL_EXPORT float "FUNC2GEN"(std::vector<std::vector<float>> H, std::vector<int>& threshold, int level)\n");
         std::string code(header + prototype);
         code.append("{\n");
         code.append("float maxSig = 0;\n");
@@ -73,8 +88,18 @@ void Otsu::sigmaCodeGeneration()
         code.append("return maxSig;\n");
         code.append("}\n");
 
-        std::ofstream output (FILE2GEN(".cc"), std::ofstream::out | std::ofstream::trunc);
-        output << code;
+        std::ofstream output;
+        output.open(FILE2GEN(.cc), std::ofstream::out | std::ofstream::trunc);
+        if (output.is_open())
+        {
+            output << code;
+        }
+        else
+        {
+            std::cerr << "Problem creating sigma computation file" << std::endl;
+            std::exit(1);
+        }
+
         output.close();
 }
 
@@ -89,10 +114,14 @@ void Otsu::libGeneration()
         ZeroMemory( &compilerProcessInfo, sizeof(compilerProcessInfo) );
 
         USES_CONVERSION;
-        char *compilerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\cl.exe";
+        #ifdef _WIN64
+            char *compilerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\amd64\\cl.exe";
+        #else
+            char *compilerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\cl.exe";
+        #endif
         TCHAR* compilerPathT= A2T(compilerPath);
 
-        char *compilerArg = "cl.exe /c "FILE2GEN(".cc");
+        char *compilerArg = "cl.exe /c "FILE2GEN(.cc);
         TCHAR* compilerArgT= A2T(compilerArg);
 
         // Start the child process. 
@@ -123,10 +152,14 @@ void Otsu::libGeneration()
         linkerInfo.cb = sizeof(linkerInfo);
         ZeroMemory( &processLinkerInfo, sizeof(processLinkerInfo) );
 
-        char *linkerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\link.exe";
+        #ifdef _WIN64
+            char *linkerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\amd64\\link.exe";
+        #else
+            char *linkerPath = "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\link.exe";
+        #endif
         TCHAR* linkerPathT= A2T(linkerPath);
 
-        char *linkerArg = "link.exe /DLL /OUT:"FILE2GEN(".dll")" "FILE2GEN(".obj");
+        char *linkerArg = "link.exe /DLL /OUT:"FILE2GEN(.dll)" "FILE2GEN(.obj);
         TCHAR* linkerArgT= A2T(linkerArg);
 
         // Start the child process. 
@@ -155,26 +188,31 @@ void Otsu::libGeneration()
         CloseHandle( processLinkerInfo.hThread );
 
     #else
-        std::system("g++ -shared -fPIC -o "FILE2GEN(".so")" "FILE2GEN(".cc"));
+        std::system("g++ -shared -fPIC -o "FILE2GEN(.so)" "FILE2GEN(.cc));
     #endif
 }
 
 t_sigmaComp Otsu::libLoad()
 {
     #ifdef _WIN32
-        HMODULE sigma_dll = LoadLibrary(FILE2GEN(".dll"));
+    char *test = FILE2GEN(.dll); 
+        HMODULE sigma_dll = LoadLibrary(FILE2GEN(.dll));
         if (!sigma_dll)
         {
+            int error = GetLastError();
             std::cerr << "Problem loading shared lib " << std::endl;
-            std::exit(1);
+            std::cerr << "Exiting with error " << error << std::endl;
+            std::exit(error);
         }
         FARPROC tempProc = GetProcAddress(sigma_dll, FUNC2GEN);
         if (!tempProc)
         {
+            int error = GetLastError();
             std::cerr << "Problem loading function in lib " << std::endl;
-            std::exit(1);
+            std::cerr << "Exiting with error " << error << std::endl;
+            std::exit(error);
         }
-        t_sigmaComp sigmaCompFunc = (t_sigmaComp)tempProc;
+        t_sigmaComp sigmaCompFunc = reinterpret_cast<t_sigmaComp>(tempProc);
         return sigmaCompFunc;
     #else
         void* sigma_so = dlopen(FILE2GEN(".so"), RTLD_LAZY);
@@ -256,7 +294,7 @@ void Otsu::otsuProcess(const cv::Mat& img)
 
     
     std::vector<int> thresholds(this->nClass);
-    sigmaComputation(thresholds);
+    sigmaComputation(thresholds, H);
     segmentImg(thresholds);
 
 }
