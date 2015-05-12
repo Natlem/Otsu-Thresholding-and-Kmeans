@@ -12,7 +12,7 @@
     #include <dlfcn.h>
 #endif
 
-#include <opencv2\highgui\highgui.hpp>
+#include "opencv2/highgui/highgui.hpp"
 #include <vector>
 #include <iostream>
 #include <fstream>

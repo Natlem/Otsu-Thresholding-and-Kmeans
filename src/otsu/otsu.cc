@@ -61,8 +61,12 @@ float Otsu::sigmaComputation(std::vector<int>& thresholds,std::vector<std::vecto
 
 void Otsu::sigmaCodeGeneration()
 {
-        std::string header("#define EXTERN_DLL_EXPORT extern \"C\" __declspec(dllexport)\n#include <vector>\n");
-        std::string prototype("EXTERN_DLL_EXPORT float "FUNC2GEN"(float **H, int *threshold, int level)\n");
+        #ifdef _WIN32
+            std::string header("#define EXTERN_DLL_EXPORT extern \"C\" __declspec(dllexport)\n#include <vector>\n");
+        #else
+            std::string header("#define EXTERN_DLL_EXPORT extern \"C\"\n#include <vector>\n");
+        #endif
+        std::string prototype("EXTERN_DLL_EXPORT float " FUNC2GEN "(float **H, int *threshold, int level)\n");
         std::string code(header + prototype);
         code.append("{\n");
         code.append("float maxSig = 0;\n");
@@ -139,7 +143,6 @@ void Otsu::libGeneration()
         char *compilerArg = "cl.exe /Zi /c "FILE2GEN(.cc);
         TCHAR* compilerArgT= A2T(compilerArg);
 
-        // Start the child process. 
         if( !CreateProcess( compilerPathT,
             compilerArgT,        
             NULL,           
@@ -152,7 +155,7 @@ void Otsu::libGeneration()
             &compilerProcessInfo )           
         ) 
         {
-            printf( "CreateProcess failed (%d).\n", GetLastError() );
+            std::cerr << "CreateProcess Failed " << GetLastError() << std::endl;
             std::exit(1);
         }
 
@@ -178,32 +181,30 @@ void Otsu::libGeneration()
         TCHAR* linkerArgT= A2T(linkerArg);
 
         // Start the child process. 
-        if( !CreateProcess( linkerPathT,   // No module name (use command line)
-            linkerArgT,        // Command line
-            NULL,           // Process handle not inheritable
-            NULL,           // Thread handle not inheritable
-            FALSE,          // Set handle inheritance to FALSE
-            0,              // No creation flags
-            NULL,           // Use parent's environment block   
-            NULL,           // Use parent's starting directory 
-            &linkerInfo,            // Pointer to STARTUPINFO structure
-            &processLinkerInfo )           // Pointer to PROCESS_INFORMATION structure
+        if( !CreateProcess( linkerPathT,
+            linkerArgT,
+            NULL,
+            NULL,
+            FALSE,
+            0,
+            NULL,
+            NULL,
+            &linkerInfo,
+            &processLinkerInfo )
             ) 
         {
-            printf( "CreateProcess failed (%d).\n", GetLastError() );
+            std::cerr << "CreateProcess Failed " << GetLastError() << std::endl;
             std::exit(1);
         }
 
         WaitForSingleObject( processLinkerInfo.hProcess, INFINITE );
-
-
 
         // Close process and thread handles. 
         CloseHandle( processLinkerInfo.hProcess );
         CloseHandle( processLinkerInfo.hThread );
 
     #else
-        std::system("g++ -shared -fPIC -o "FILE2GEN(.so)" "FILE2GEN(.cc));
+        std::system("g++ -shared -fPIC -o " FILE2GEN(.so) " " FILE2GEN(.cc));
     #endif
 }
 
@@ -230,16 +231,18 @@ t_sigmaComp Otsu::libLoad()
         t_sigmaComp sigmaCompFunc = reinterpret_cast<t_sigmaComp>(tempProc);
         return sigmaCompFunc;
     #else
-        void* sigma_so = dlopen(FILE2GEN(".so"), RTLD_LAZY);
+        void* sigma_so = dlopen(FILE2GEN(.so), RTLD_LAZY);
         if (!sigma_so)
         {
             std::cerr << "Problem loading shared lib " << std::endl;
+            std::cerr << dlerror() << std::endl;
             std::exit(1);
         }
         void* tempSigma = dlsym(sigma_so, FUNC2GEN);
         if (!tempSigma)
         {
             std::cerr << "Problem loading function in lib " << std::endl;
+            std::cerr << dlerror() << std::endl;
             std::exit(1);
         }
         t_sigmaComp sigmaCompFunc = (t_sigmaComp)tempSigma;
