@@ -42,8 +42,16 @@ add_executable(
 	${V_SOURCE}
 )
 
+if ( WIN32)
 target_link_libraries(
 	Tester
     ${OpenCV_LIBS}
     Otsu.dll
 )
+else()
+target_link_libraries(
+	Tester
+    ${OpenCV_LIBS}
+    Otsu.a
+)
+endif()
