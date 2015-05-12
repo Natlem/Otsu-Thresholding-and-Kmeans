@@ -9,6 +9,7 @@ Otsu::Otsu()
 Otsu::Otsu(const cv::Mat& img, int nClass)
     :output(img),nClass(nClass)
 {
+    // We assume that img is in HSV colorspace
     this->otsuProcess(img);
 }
 
@@ -40,14 +41,28 @@ float Otsu::sigmaComputation(std::vector<int>& thresholds,std::vector<std::vecto
     sigmaCodeGeneration();
     this->libGeneration();
     t_sigmaComp sigmaFunc = this->libLoad();
-    sigma = sigmaFunc(H, thresholds, this->nClass);
+
+    float **h = nullptr;
+    h = new float*[H.size()];
+    assert(H.size());
+    assert(H[0].size());
+    for (auto i = 0; i < H.size(); ++i)
+    {
+        h[i] = new float[H[0].size()];
+        for (auto j = 0; j < H[0].size(); ++j)
+        {
+            h[i][j] = H[i][j];
+        }
+    }
+
+    sigma = sigmaFunc(h, &thresholds[0], this->nClass);
     return sigma;
 }
 
 void Otsu::sigmaCodeGeneration()
 {
-        std::string header("#ifdef _WIN32\n #define EXTERN_DLL_EXPORT extern \"C\" __declspec(dllexport)\n#endif\n#include <vector>\n");
-        std::string prototype("EXTERN_DLL_EXPORT float "FUNC2GEN"(std::vector<std::vector<float>> H, std::vector<int>& threshold, int level)\n");
+        std::string header("#define EXTERN_DLL_EXPORT extern \"C\" __declspec(dllexport)\n#include <vector>\n");
+        std::string prototype("EXTERN_DLL_EXPORT float "FUNC2GEN"(float **H, int *threshold, int level)\n");
         std::string code(header + prototype);
         code.append("{\n");
         code.append("float maxSig = 0;\n");
@@ -78,7 +93,7 @@ void Otsu::sigmaCodeGeneration()
 
         for (int i = 0; i < nClass - 1 ; ++i)
         {
-            code = code + "threshold[" + std::to_string(i) + "] = " + index[i] + ";\n"; 
+            code = code + "threshold[" + std::to_string(i + 1) + "] = " + index[i] + ";\n"; 
         }
         code.append("maxSig = Sq;\n");
 
@@ -121,7 +136,7 @@ void Otsu::libGeneration()
         #endif
         TCHAR* compilerPathT= A2T(compilerPath);
 
-        char *compilerArg = "cl.exe /c "FILE2GEN(.cc);
+        char *compilerArg = "cl.exe /Zi /c "FILE2GEN(.cc);
         TCHAR* compilerArgT= A2T(compilerArg);
 
         // Start the child process. 
@@ -159,7 +174,7 @@ void Otsu::libGeneration()
         #endif
         TCHAR* linkerPathT= A2T(linkerPath);
 
-        char *linkerArg = "link.exe /DLL /OUT:"FILE2GEN(.dll)" "FILE2GEN(.obj);
+        char *linkerArg = "link.exe /DEBUG /DLL /OUT:"FILE2GEN(.dll)" "FILE2GEN(.obj);
         TCHAR* linkerArgT= A2T(linkerArg);
 
         // Start the child process. 
@@ -307,9 +322,9 @@ void Otsu::segmentImg(const std::vector<int>& thresholds)
         for (auto j = 0; j < output.cols; ++j)
         {
             int vValue = static_cast<int>(output.at<cv::Vec3b>(i,j)[2]);
-            for (auto k = 0; k < this->nClass; ++ i)
+            for (auto k = 0; k < this->nClass; ++ k)
             {
-                if (k < this->nClass)
+                if (k < this->nClass - 1)
                 {
                     if (vValue < thresholds[k + 1] && vValue > thresholds[k])
                     {

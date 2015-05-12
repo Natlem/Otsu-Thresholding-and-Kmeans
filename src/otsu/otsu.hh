@@ -21,7 +21,7 @@
 #define NGRAY 256
 #define FILE2GEN(ext) "sigmaComputation"#ext
 #define FUNC2GEN "sigmaComp"
-typedef float (*t_sigmaComp)(std::vector<std::vector<float>> H, std::vector<int>& threshold, int level);
+typedef float (*t_sigmaComp)(float **h, int *threshold, int level);
 
 class Otsu
 {
