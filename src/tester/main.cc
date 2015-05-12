@@ -1,9 +1,10 @@
-#include <opencv2\opencv.hpp>
+#include <opencv2/opencv.hpp>
+#include <string>
 #include "../otsu/otsu.hh"
 
 int main(int argc, char **argv)
 {
-    int numOfRegion = 4; 
+    int numOfRegion = std::stoi(argv[2]); 
     cv::Mat img = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
     cv::cvtColor(img,img,CV_BGR2HSV);
 
