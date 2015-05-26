@@ -1,1 +1,56 @@
-Image segmentation using kmeans and otsu thresholding
+==============================================================================
+README
+==============================================================================
+
+An image segmentation project using kmeans and otsu thresholding.
+This project works on both Windows and Linux.
+
+==============================================================================
+REQUIREMENTS
+==============================================================================
+
+Cmake
+OpenCV
+C++ Compiler supporting c++11
+
+==============================================================================
+HOW TO BUILD
+==============================================================================
+
+LINUX:
+    mkdir build/
+    cd build
+    cmake ..
+    make (this will generate the tester to test Otsu)
+
+WINDOWS:
+    Run cmake-gui
+    Source folder : ./
+    Build folder : ./Build
+    Configure
+    Generate
+    Run sln
+    Build (Whichever you want)
+
+==============================================================================
+TESTER
+==============================================================================
+
+This project includes a tester to test the Otsu algorithm and Kmeans.
+
+==============================================================================
+OTSU THRESHOLDING
+==============================================================================
+
+Implement Otsu multi-level thresholding.
+The implementation generates an appropriate algorithm for the number of class
+in the input, compiles it, creates a library and calls the function generated
+in the library.(I'm aware of the fact that this is not the best way to do it,
+just wanted to try out and learn some new things on Linux and Windows)
+
+==============================================================================
+KMEANS
+==============================================================================
+
+Work in progess
+
