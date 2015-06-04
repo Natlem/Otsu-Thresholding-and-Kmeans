@@ -29,7 +29,7 @@ WINDOWS:
     Build folder : ./Build
     Configure
     Generate
-    Run sln
+    Run sln with vcvars64.bat
     Build (Whichever you want)
 
 ==============================================================================
